@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inqui-lab — Ideas Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #f4f5f7;
+  --surface:  #ffffff;
+  --border:   #e2e5ea;
+  --border2:  #cdd2d9;
+  --text1:    #1a1d23;
+  --text2:    #5a6170;
+  --text3:    #9aa0ac;
+  --accent:   #1a6ef5;
+  --radius:   12px;
+  --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.06);
+
+  --idea-bg:#EAF3DE;  --idea-text:#2d5a1a;  --idea-bd:#b8d98a;
+  --proto-bg:#E6F1FB; --proto-text:#0f4a8a; --proto-bd:#93c3ef;
+  --ment-bg:#FEF3E2;  --ment-text:#7a4500;  --ment-bd:#f9c86a;
+  --prod-bg:#E0F5EE;  --prod-text:#0a5c3f;  --prod-bd:#6fcfaf;
+  --pat-bg:#EEEDFE;   --pat-text:#3b30a0;   --pat-bd:#bcb8f5;
+  --high:#0a5c3f; --med:#7a4500; --low:#8a1a1a;
+}
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text1);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+.page { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+}
+.header-left h1 {
+  font-size: 22px; font-weight: 600; color: var(--text1);
+  display: flex; align-items: center; gap: 8px;
+}
+.header-left h1 .bulb { color: #e6a020; font-size: 20px; }
+.header-left p { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.header-right { display: flex; gap: 8px; align-items: center; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-family: inherit; cursor: pointer; font-weight: 500;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text2); transition: background .15s, color .15s;
+}
+.btn:hover { background: #f0f2f5; color: var(--text1); }
+.btn.active { background: var(--text1); color: #fff; border-color: var(--text1); }
+.btn i { font-size: 15px; }
+
+/* ── Stats row ────────────────────────────────────────────────────────────── */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.stat-icon {
+  width: 38px; height: 38px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.stat-val { font-size: 22px; font-weight: 600; line-height: 1; }
+.stat-lbl { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* ── Filter panel ─────────────────────────────────────────────────────────── */
+.filter-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
+}
+.search-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0; }
+.search-wrap {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 12px;
+}
+.search-wrap input {
+  border: none; background: transparent; outline: none;
+  font-family: inherit; font-size: 13px; color: var(--text1); width: 100%;
+}
+.search-wrap i { color: var(--text3); font-size: 15px; flex-shrink: 0; }
+.filter-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px; margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.filter-group label { display: block; font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 500; letter-spacing: .03em; }
+select {
+  width: 100%; padding: 6px 10px; border: 1px solid var(--border);
+  border-radius: 7px; font-family: inherit; font-size: 12px;
+  color: var(--text1); background: var(--bg); cursor: pointer; outline: none;
+}
+select:focus { border-color: var(--accent); }
+.filters-hidden { display: none; }
+
+/* ── Results bar ──────────────────────────────────────────────────────────── */
+.results-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+}
+.results-count { font-size: 13px; color: var(--text2); }
+.results-count strong { color: var(--text1); }
+.stage-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.stage-pill {
+  display: inline-flex; align-items: center; padding: 3px 9px;
+  border-radius: 20px; font-size: 11px; font-weight: 500; cursor: pointer;
+  border: 1px solid; transition: opacity .15s;
+}
+.stage-pill:hover { opacity: .8; }
+.clear-link {
+  font-size: 12px; color: var(--accent); cursor: pointer;
+  background: none; border: none; font-family: inherit; padding: 0;
+}
+.clear-link:hover { text-decoration: underline; }
+
+/* ── Cards grid ───────────────────────────────────────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 12px; }
+@media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+
+/* ── Idea card ────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.card:hover { border-color: var(--border2); box-shadow: var(--shadow); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.card-title-wrap { display: flex; gap: 10px; align-items: flex-start; flex: 1; min-width: 0; }
+.card-icon {
+  width: 34px; height: 34px; border-radius: 8px; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--text3); flex-shrink: 0; margin-top: 1px;
+}
+.card-title { font-size: 14px; font-weight: 600; color: var(--text1); line-height: 1.35; }
+.card-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.card-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* ── Badge ────────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid;
+  background: var(--bg); border-color: var(--border); color: var(--text2);
+}
+
+/* ── Scope bar ────────────────────────────────────────────────────────────── */
+.scope-rows { display: flex; flex-direction: column; gap: 6px; }
+.scope-row { display: flex; align-items: center; gap: 8px; }
+.scope-lbl { font-size: 11px; color: var(--text3); width: 68px; flex-shrink: 0; }
+.scope-track { flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+.scope-fill { height: 100%; border-radius: 2px; }
+.scope-val { font-size: 11px; font-weight: 600; width: 44px; text-align: right; flex-shrink: 0; }
+
+/* ── Expanded details ─────────────────────────────────────────────────────── */
+.card-detail {
+  border-top: 1px solid var(--border); padding-top: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.detail-section p.lbl {
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px;
+}
+.detail-section p.val { font-size: 13px; color: var(--text1); line-height: 1.55; }
+.detail-row { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text2); }
+.detail-row i { font-size: 14px; color: var(--text3); }
+.next-box {
+  display: flex; align-items: center; gap: 8px;
+  background: #eef4ff; border-radius: 7px; padding: 8px 10px;
+  font-size: 12px; color: #0f4a8a;
+}
+.next-box i { color: #1a6ef5; font-size: 14px; flex-shrink: 0; }
+.link-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.link-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  text-decoration: none; border: 1px solid; transition: opacity .15s;
+}
+.link-chip:hover { opacity: .75; }
+.link-chip.photo  { background:#eef4ff; color:#0f4a8a; border-color:#93c3ef; }
+.link-chip.video  { background:#EEEDFE; color:#3b30a0; border-color:#bcb8f5; }
+.link-chip.doc    { background:#E0F5EE; color:#0a5c3f; border-color:#6fcfaf; }
+
+/* ── Card toggle ──────────────────────────────────────────────────────────── */
+.card-toggle { display: flex; justify-content: flex-end; }
+.card-toggle span { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 3px; }
+
+/* ── Empty / Loading / Error states ──────────────────────────────────────── */
+.state-box {
+  text-align: center; padding: 60px 20px; color: var(--text3);
+  background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
+}
+.state-box i { font-size: 36px; display: block; margin-bottom: 10px; }
+.state-box p { font-size: 14px; margin-bottom: 14px; }
+.error-box {
+  background: #fff5f5; border: 1px solid #fcc; border-radius: var(--radius);
+  padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;
+}
+.error-box i { color: #c0392b; font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.error-box .err-text p:first-child { font-weight: 600; color: #7b1a1a; margin-bottom: 3px; }
+.error-box .err-text p:last-child  { font-size: 12px; color: #a84040; }
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+.footer {
+  text-align: center; font-size: 11px; color: var(--text3);
+  margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1><i class="ti ti-bulb bulb"></i> Inqui-lab Ideas Board</h1>
+      <p id="last-updated">Live from Google Sheets · loading…</p>
+    </div>
+    <div class="header-right">
+      <button class="btn" id="btn-refresh" onclick="loadData()">
+        <i class="ti ti-refresh"></i> Refresh
+      </button>
+      <button class="btn active" id="btn-board" onclick="switchTab('board')">
+        <i class="ti ti-layout-cards"></i> Ideas Board
+      </button>
+      <button class="btn" id="btn-guide" onclick="switchTab('guide')">
+        <i class="ti ti-clipboard-list"></i> Field Guide
+      </button>
+    </div>
+  </div>
+
+  <!-- Board tab -->
+  <div id="tab-board">
+
+    <!-- Stats -->
+    <div class="stats" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#EAF3DE;color:#2d5a1a"><i class="ti ti-bulb"></i></div>
+        <div><div class="stat-val" id="s-total">—</div><div class="stat-lbl">Total Ideas</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#E6F1FB;color:#0f4a8a"><i class="ti ti-tool"></i></div>
+        <div><div class="stat-val" id="s-proto">—</div><div class="stat-lbl">Prototypes</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#FEF3E2;color:#7a4500"><i class="ti ti-user-check"></i></div>
+        <div><div class="stat-val" id="s-ment">—</div><div class="stat-lbl">In Mentorship</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#E0F5EE;color:#0a5c3f"><i class="ti ti-package"></i></div>
+        <div><div class="stat-val" id="s-prod">—</div><div class="stat-lbl">Products</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#EEEDFE;color:#3b30a0"><i class="ti ti-certificate"></i></div>
+        <div><div class="stat-val" id="s-pat">—</div><div class="stat-lbl">Patented</div></div>
+      </div>
+    </div>
+
+    <!-- Filter panel -->
+    <div class="filter-panel">
+      <div class="search-row">
+        <div class="search-wrap">
+          <i class="ti ti-search"></i>
+          <input type="text" id="search-input" placeholder="Search title, student, problem, keyword…" oninput="applyFilters()">
+        </div>
+        <button class="btn" onclick="toggleFilters()">
+          <i class="ti ti-adjustments-horizontal"></i>
+          <span id="filter-btn-lbl">Filters ▼</span>
+        </button>
+      </div>
+      <div class="filter-grid" id="filter-grid">
+        <div class="filter-group"><label>Program</label><select id="f-program" onchange="applyFilters()"></select></div>
+        <div class="filter-group"><label>Year</label><select id="f-year" onchange="applyFilters()"></select></div>
+        <div class="filter-group"><label>Grade</label><select id="f-grade" onchange="applyFilters()"></select></div>
+        <div class="filter-group"><label>Age Group</label><select id="f-age" onchange="applyFilters()"></select></div>
+        <div class="filter-group"><label>Domain</label><select id="f-domain" onchange="applyFilters()"></select></div>
+        <div class="filter-group"><label>Stage</label><select id="f-stage" onchange="applyFilters()"></select></div>
+        <div class="filter-group"><label>Productize Scope</label><select id="f-prod" onchange="applyFilters()"></select></div>
+        <div class="filter-group"><label>Patent Scope</label><select id="f-pat" onchange="applyFilters()"></select></div>
+      </div>
+    </div>
+
+    <!-- Results bar -->
+    <div class="results-bar">
+      <div>
+        <span class="results-count" id="results-count"></span>
+        <button class="clear-link" id="clear-btn" onclick="clearFilters()" style="display:none; margin-left:8px">Clear filters</button>
+      </div>
+      <div class="stage-pills" id="stage-pills"></div>
+    </div>
+
+    <!-- Cards / states -->
+    <div id="state-loading" class="state-box">
+      <i class="ti ti-loader-2"></i>
+      <p>Loading ideas from Google Sheet…</p>
+    </div>
+    <div id="state-error" class="error-box" style="display:none">
+      <i class="ti ti-alert-circle"></i>
+      <div class="err-text">
+        <p>Could not load sheet data</p>
+        <p id="err-msg">Check your internet connection and try refreshing.</p>
+      </div>
+    </div>
+    <div id="state-empty" class="state-box" style="display:none">
+      <i class="ti ti-table-off"></i>
+      <p>No ideas found in the sheet yet.</p>
+      <button class="btn" onclick="loadData()"><i class="ti ti-refresh"></i> Retry</button>
+    </div>
+    <div id="state-noresults" class="state-box" style="display:none">
+      <i class="ti ti-search-off"></i>
+      <p>No ideas match these filters.</p>
+      <button class="btn" onclick="clearFilters()">Clear filters</button>
+    </div>
+    <div class="cards" id="cards-grid"></div>
+
+  </div><!-- /tab-board -->
+
+  <!-- Field Guide tab -->
+  <div id="tab-guide" style="display:none">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;color:var(--text2);font-size:13px;line-height:1.7">
+      This is the field reference for your Google Sheet. Each row below is a column in the <strong>Ideas Data</strong> tab. Fill all fields for best results on the dashboard.
+    </div>
+    <div id="guide-content"></div>
+  </div>
+
+  <div class="footer">Inqui-lab Foundation · Ideas Board · Data live from Google Sheets</div>
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSwGzdPhJU6wQlWoepNuZwPmkvlip44O0ebP9PrDgGJXLkO770ScIUBalIhUY1TFQ/pub?gid=473709769&single=true&output=csv";
+
+// ── State ──────────────────────────────────────────────────────────────────
+let allIdeas     = [];
+let filtersOpen  = true;
+let activeStage  = null;
+
+// ── Stage config ───────────────────────────────────────────────────────────
+const STAGES = {
+  Idea:       { bg:"var(--idea-bg)",  text:"var(--idea-text)",  bd:"var(--idea-bd)"  },
+  Prototype:  { bg:"var(--proto-bg)", text:"var(--proto-text)", bd:"var(--proto-bd)" },
+  Mentorship: { bg:"var(--ment-bg)",  text:"var(--ment-text)",  bd:"var(--ment-bd)"  },
+  Product:    { bg:"var(--prod-bg)",  text:"var(--prod-text)",  bd:"var(--prod-bd)"  },
+  Patented:   { bg:"var(--pat-bg)",   text:"var(--pat-text)",   bd:"var(--pat-bd)"   },
+};
+const DOMAIN_ICONS = {
+  Health:"ti-heart-rate-monitor", Education:"ti-school",
+  Environment:"ti-leaf", Agriculture:"ti-plant", Safety:"ti-shield",
+  Technology:"ti-cpu", Social:"ti-users", Infrastructure:"ti-building", Default:"ti-bulb"
+};
+
+// ── Parse CSV row → idea object ────────────────────────────────────────────
+function rowToIdea(row) {
+  const id = (row[0]||"").trim();
+  if (!id || id.startsWith("[") || id === "Idea ID") return null;
+  return {
+    id,
+    title:           row[1]  || "",
+    programName:     row[2]  || "",
+    programYear:     row[3]  || "",
+    student:         row[4]  || "",
+    school:          row[5]  || "",
+    location:        row[6]  || "",
+    district:        row[7]  || "",
+    grade:           row[8]  || "",
+    ageGroup:        row[9]  || "",
+    teamSize:        row[10] || "",
+    schoolType:      row[11] || "",
+    problem:         row[12] || "",
+    summary:         row[13] || "",
+    users:           row[14] || "",
+    domain:          row[15] || "",
+    stage:           row[16] || "",
+    nextAction:      row[17] || "",
+    productizeScope: row[18] || "",
+    productizeNotes: row[19] || "",
+    patentScope:     row[20] || "",
+    patentNotes:     row[21] || "",
+    patented:        (row[22]||"").trim().toLowerCase() === "yes",
+    patentNumber:    row[23] || "",
+    photo:           row[24] || "",
+    video:           row[25] || "",
+    doc:             row[26] || "",
+    notes:           row[27] || "",
+  };
+}
+
+// ── Fetch data ─────────────────────────────────────────────────────────────
+function loadData() {
+  showState("loading");
+  document.getElementById("last-updated").textContent = "Loading…";
+  fetch(CSV_URL)
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+    .then(text => {
+      const result = Papa.parse(text, { header: false, skipEmptyLines: false });
+      allIdeas = (result.data.slice(3) || [])
+        .map(rowToIdea)
+        .filter(Boolean);
+      buildFilters();
+      buildStagePills();
+      applyFilters();
+      updateStats();
+      const now = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      document.getElementById("last-updated").textContent =
+        "Live from Google Sheets · updated " + now;
+    })
+    .catch(err => {
+      showState("error");
+      document.getElementById("err-msg").textContent = err.message + " — check your internet connection.";
+      document.getElementById("last-updated").textContent = "Could not load";
+    });
+}
+
+// ── Build dynamic filter dropdowns ────────────────────────────────────────
+function buildFilters() {
+  const uniq = arr => [...new Set(arr.filter(Boolean).sort())];
+  const years = [...new Set(allIdeas.map(i=>i.programYear).filter(Boolean))].sort((a,b)=>b-a);
+  const sets = {
+    "f-program": uniq(allIdeas.map(i=>i.programName)),
+    "f-year":    years,
+    "f-grade":   uniq(allIdeas.map(i=>i.grade)),
+    "f-age":     uniq(allIdeas.map(i=>i.ageGroup)),
+    "f-domain":  uniq(allIdeas.map(i=>i.domain)),
+    "f-stage":   ["Idea","Prototype","Mentorship","Product","Patented"],
+    "f-prod":    ["High","Medium","Low"],
+    "f-pat":     ["High","Medium","Low"],
+  };
+  for (const [id, vals] of Object.entries(sets)) {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All</option>' +
+      vals.map(v => `<option value="${v}">${v}</option>`).join("");
+    if (cur) sel.value = cur;
+  }
+}
+
+// ── Stage pills ────────────────────────────────────────────────────────────
+function buildStagePills() {
+  const counts = {};
+  allIdeas.forEach(i => { counts[i.stage] = (counts[i.stage]||0)+1; });
+  const patCount = allIdeas.filter(i=>i.patented).length;
+  const container = document.getElementById("stage-pills");
+  container.innerHTML = Object.entries(STAGES).map(([s, c]) => {
+    const n = s === "Patented" ? patCount : (counts[s]||0);
+    return `<span class="stage-pill"
+      style="background:${c.bg};color:${c.text};border-color:${c.bd}"
+      onclick="toggleStageFilter('${s}')" id="pill-${s}">
+      ${n} ${s}
+    </span>`;
+  }).join("");
+}
+
+function toggleStageFilter(s) {
+  if (activeStage === s) {
+    activeStage = null;
+    document.getElementById("f-stage").value = "";
+  } else {
+    activeStage = s;
+    document.getElementById("f-stage").value = s;
+  }
+  highlightActivePill();
+  applyFilters();
+}
+
+function highlightActivePill() {
+  Object.keys(STAGES).forEach(s => {
+    const pill = document.getElementById("pill-"+s);
+    if (!pill) return;
+    pill.style.opacity = (!activeStage || activeStage===s) ? "1" : "0.4";
+  });
+}
+
+// ── Apply filters + render ─────────────────────────────────────────────────
+function applyFilters() {
+  const q       = (document.getElementById("search-input").value||"").toLowerCase().trim();
+  const program = document.getElementById("f-program").value;
+  const year    = document.getElementById("f-year").value;
+  const grade   = document.getElementById("f-grade").value;
+  const age     = document.getElementById("f-age").value;
+  const domain  = document.getElementById("f-domain").value;
+  const stage   = document.getElementById("f-stage").value;
+  const prod    = document.getElementById("f-prod").value;
+  const pat     = document.getElementById("f-pat").value;
+
+  activeStage = stage || null;
+  highlightActivePill();
+
+  const anyFilter = q||program||year||grade||age||domain||stage||prod||pat;
+  document.getElementById("clear-btn").style.display = anyFilter ? "inline" : "none";
+
+  const filtered = allIdeas.filter(idea => {
+    if (q && ![idea.title,idea.student,idea.problem,idea.summary,idea.domain,idea.school,idea.district]
+      .join(" ").toLowerCase().includes(q)) return false;
+    if (program && idea.programName !== program) return false;
+    if (year    && idea.programYear !== year)    return false;
+    if (grade   && idea.grade !== grade)         return false;
+    if (age     && idea.ageGroup !== age)        return false;
+    if (domain  && idea.domain !== domain)       return false;
+    if (stage) {
+      if (stage === "Patented" && !idea.patented) return false;
+      if (stage !== "Patented" && idea.stage !== stage) return false;
+    }
+    if (prod && idea.productizeScope !== prod)   return false;
+    if (pat  && idea.patentScope !== pat)        return false;
+    return true;
+  });
+
+  const countEl = document.getElementById("results-count");
+  countEl.innerHTML = `Showing <strong>${filtered.length}</strong> of ${allIdeas.length} ideas`;
+
+  const grid = document.getElementById("cards-grid");
+  if (allIdeas.length === 0) { showState("empty"); return; }
+  if (filtered.length === 0) { showState("noresults"); return; }
+  showState("cards");
+  grid.innerHTML = filtered.map(ideaCard).join("");
+}
+
+// ── Render a single idea card (HTML string) ────────────────────────────────
+function ideaCard(idea) {
+  const sc   = STAGES[idea.stage] || STAGES["Idea"];
+  const icon = DOMAIN_ICONS[idea.domain] || DOMAIN_ICONS.Default;
+  const students = (idea.student||"").split("\n").map(s=>s.trim()).filter(Boolean).join(" · ");
+  const stageBadge = `<span class="badge" style="background:${sc.bg};color:${sc.text};border-color:${sc.bd}">${idea.stage||"—"}</span>`;
+  const patBadge = idea.patented
+    ? `<span class="badge" style="background:var(--pat-bg);color:var(--pat-text);border-color:var(--pat-bd)">✓ Patented</span>` : "";
+
+  const scopeBar = (label, value) => {
+    if (!value) return "";
+    const w   = value==="High"?"100%": value==="Medium"?"60%":"30%";
+    const col = value==="High"?"var(--high)": value==="Medium"?"var(--med)":"var(--low)";
+    return `<div class="scope-row">
+      <span class="scope-lbl">${label}</span>
+      <div class="scope-track"><div class="scope-fill" style="width:${w};background:${col}"></div></div>
+      <span class="scope-val" style="color:${col}">${value}</span>
+    </div>`;
+  };
+
+  const tags = [idea.domain, idea.grade ? "Grade "+idea.grade : "", idea.programYear, idea.programName, idea.district]
+    .filter(Boolean)
+    .map(t => `<span class="badge">${t}</span>`).join("");
+
+  const links = [
+    idea.photo ? `<a class="link-chip photo" href="${idea.photo}" target="_blank" onclick="event.stopPropagation()"><i class="ti ti-photo"></i> Photo</a>` : "",
+    idea.video ? `<a class="link-chip video" href="${idea.video}" target="_blank" onclick="event.stopPropagation()"><i class="ti ti-video"></i> Video</a>` : "",
+    idea.doc   ? `<a class="link-chip doc"   href="${idea.doc}"   target="_blank" onclick="event.stopPropagation()"><i class="ti ti-file-text"></i> Document</a>` : "",
+  ].filter(Boolean).join("");
+
+  const detail = `
+    <div class="card-detail" id="detail-${idea.id}" style="display:none">
+      ${idea.problem  ? `<div class="detail-section"><p class="lbl">Problem</p><p class="val">${idea.problem}</p></div>` : ""}
+      ${idea.summary  ? `<div class="detail-section"><p class="lbl">Solution</p><p class="val">${idea.summary}</p></div>` : ""}
+      ${idea.users    ? `<div class="detail-row"><i class="ti ti-users"></i> Beneficiary: ${idea.users}</div>` : ""}
+      ${idea.school   ? `<div class="detail-row"><i class="ti ti-building"></i> ${idea.school}${idea.location?" · "+idea.location:""}</div>` : ""}
+      ${idea.nextAction ? `<div class="next-box"><i class="ti ti-arrow-right"></i> <strong>Next:</strong>&nbsp;${idea.nextAction}</div>` : ""}
+      ${links ? `<div class="link-chips">${links}</div>` : ""}
+      ${idea.patented && idea.patentNumber ? `<div class="detail-row"><i class="ti ti-certificate"></i> Patent: <strong>${idea.patentNumber}</strong></div>` : ""}
+      ${idea.notes    ? `<div style="font-size:11px;color:var(--text3);font-style:italic;line-height:1.5">${idea.notes}</div>` : ""}
+    </div>`;
+
+  return `
+  <div class="card" onclick="toggleCard('${idea.id}')">
+    <div class="card-head">
+      <div class="card-title-wrap">
+        <div class="card-icon"><i class="ti ${icon}"></i></div>
+        <div>
+          <div class="card-title">${idea.title}</div>
+          <div class="card-sub">${idea.id}${students ? " · "+students : ""}</div>
+        </div>
+      </div>
+      <div class="card-badges">${stageBadge}${patBadge}</div>
+    </div>
+    <div class="card-tags">${tags}</div>
+    ${idea.productizeScope||idea.patentScope ? `<div class="scope-rows">${scopeBar("Productize",idea.productizeScope)}${scopeBar("Patent",idea.patentScope)}</div>` : ""}
+    ${detail}
+    <div class="card-toggle">
+      <span id="toggle-${idea.id}"><i class="ti ti-chevron-down"></i> View details</span>
+    </div>
+  </div>`;
+}
+
+// ── Toggle card expand ─────────────────────────────────────────────────────
+function toggleCard(id) {
+  const d = document.getElementById("detail-"+id);
+  const t = document.getElementById("toggle-"+id);
+  if (!d || !t) return;
+  const open = d.style.display !== "none";
+  d.style.display  = open ? "none" : "flex";
+  t.innerHTML = open
+    ? '<i class="ti ti-chevron-down"></i> View details'
+    : '<i class="ti ti-chevron-up"></i> Collapse';
+}
+
+// ── Update stat cards ──────────────────────────────────────────────────────
+function updateStats() {
+  const counts = {};
+  allIdeas.forEach(i => { counts[i.stage] = (counts[i.stage]||0)+1; });
+  document.getElementById("s-total").textContent = allIdeas.length;
+  document.getElementById("s-proto").textContent = counts["Prototype"] || 0;
+  document.getElementById("s-ment").textContent  = counts["Mentorship"] || 0;
+  document.getElementById("s-prod").textContent  = counts["Product"] || 0;
+  document.getElementById("s-pat").textContent   = allIdeas.filter(i=>i.patented).length;
+}
+
+// ── Show/hide states ───────────────────────────────────────────────────────
+function showState(state) {
+  ["loading","error","empty","noresults","cards"].forEach(s => {
+    const el = document.getElementById("state-"+s) || document.getElementById("cards-grid");
+    if (!el) return;
+    const id = s === "cards" ? "cards-grid" : "state-"+s;
+    const elem = document.getElementById(id);
+    if (elem) elem.style.display = (s === state) ? (s==="cards"?"grid":"flex") : "none";
+  });
+  // Also hide/show results bar
+  const rb = document.getElementById("results-count");
+  if (rb) rb.parentElement.parentElement.style.visibility =
+    (state==="cards"||state==="noresults") ? "visible" : "hidden";
+}
+
+// ── Filters toggle ─────────────────────────────────────────────────────────
+function toggleFilters() {
+  filtersOpen = !filtersOpen;
+  document.getElementById("filter-grid").style.display = filtersOpen ? "grid" : "none";
+  document.getElementById("filter-btn-lbl").textContent = filtersOpen ? "Filters ▲" : "Filters ▼";
+}
+
+// ── Clear all filters ──────────────────────────────────────────────────────
+function clearFilters() {
+  document.getElementById("search-input").value = "";
+  ["f-program","f-year","f-grade","f-age","f-domain","f-stage","f-prod","f-pat"]
+    .forEach(id => { document.getElementById(id).value = ""; });
+  activeStage = null;
+  highlightActivePill();
+  applyFilters();
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById("tab-board").style.display = tab==="board" ? "block" : "none";
+  document.getElementById("tab-guide").style.display = tab==="guide" ? "block" : "none";
+  document.getElementById("btn-board").className = "btn" + (tab==="board"?" active":"");
+  document.getElementById("btn-guide").className = "btn" + (tab==="guide"?" active":"");
+  if (tab==="guide" && !document.getElementById("guide-content").innerHTML) buildGuide();
+}
+
+// ── Build field guide ──────────────────────────────────────────────────────
+function buildGuide() {
+  const sections = [
+    {title:"Basic Info", fields:[
+      {n:"Idea ID",t:"Auto",d:"e.g. IL-001 or IL-2025-001"},
+      {n:"Idea Title",t:"Text",d:"Clear, action-oriented title"},
+      {n:"Program Name",t:"Dropdown",d:"Which Inqui-lab program"},
+      {n:"Program Year",t:"Number",d:"e.g. 2025"},
+    ]},
+    {title:"Student & School", fields:[
+      {n:"Student Name(s)",t:"Text",d:"One name per line within the cell"},
+      {n:"School Name",t:"Text",d:"Full school name"},
+      {n:"Location",t:"Text",d:"Town or area"},
+      {n:"District",t:"Text",d:"District name"},
+      {n:"Grade",t:"Dropdown",d:"Grade at time of submission"},
+      {n:"Age Group",t:"Dropdown",d:"6-10 / 11-13 / 14-16 / 17-19"},
+      {n:"Team Size",t:"Number",d:"1 for individual, 2–5 for team"},
+      {n:"School Type",t:"Dropdown",d:"Govt / Private / NGO-supported"},
+    ]},
+    {title:"Problem & Solution", fields:[
+      {n:"Problem Statement",t:"Long text",d:"What problem, for whom?"},
+      {n:"Solution Summary",t:"Long text",d:"How it works (150 words max)"},
+      {n:"Users",t:"Text",d:"Who benefits e.g. farmers, elderly"},
+      {n:"Domain / Category",t:"Dropdown",d:"Health / Education / Environment / Agriculture / Safety…"},
+    ]},
+    {title:"Stage & Status", fields:[
+      {n:"Current Stage",t:"Dropdown",d:"Idea / Prototype / Mentorship / Product / Patented"},
+      {n:"Next Action",t:"Text",d:"Immediate next step for this idea"},
+    ]},
+    {title:"Scope & Patent", fields:[
+      {n:"Scope to Productize",t:"Rating",d:"High / Medium / Low — commercial feasibility"},
+      {n:"Productize Notes",t:"Text",d:"Key enablers or barriers"},
+      {n:"Scope to Patent",t:"Rating",d:"High / Medium / Low — novelty assessment"},
+      {n:"Patent Notes",t:"Text",d:"Prior art check done? Any filings?"},
+      {n:"Is Patented?",t:"Yes / No",d:"If Yes, add the application number"},
+      {n:"Patent Number",t:"Text",d:"Application or grant number"},
+    ]},
+    {title:"Links & Notes", fields:[
+      {n:"Photo Link",t:"URL",d:"Google Drive photo or demo image"},
+      {n:"Video Link",t:"URL",d:"Demo video link"},
+      {n:"Document Link",t:"URL",d:"Presentation, report, or write-up"},
+      {n:"Notes / History",t:"Text",d:"Awards, milestones, media coverage"},
+    ]},
+  ];
+  document.getElementById("guide-content").innerHTML = sections.map(sec => `
+    <div style="margin-bottom:16px">
+      <p style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--text1)">${sec.title}</p>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        ${sec.fields.map((f,i) => `
+          <div style="display:grid;grid-template-columns:160px 90px 1fr;gap:12px;padding:9px 16px;
+            border-bottom:${i<sec.fields.length-1?"1px solid var(--border)":"none"};align-items:center">
+            <span style="font-size:13px;font-weight:500;color:var(--text1)">${f.n}</span>
+            <span style="display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;
+              background:var(--bg);color:var(--text2);border:1px solid var(--border);white-space:nowrap">${f.t}</span>
+            <span style="font-size:12px;color:var(--text3)">${f.d}</span>
+          </div>`).join("")}
+      </div>
+    </div>`).join("");
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
